@@ -45,6 +45,10 @@ An educational CS2 external ESP project built with SDL2, Dear ImGui, and C++20. 
 
 The overlay supports a game window located entirely on one monitor. Rendering pauses while the window spans monitors and resumes when it moves back. Exclusive fullscreen is unsupported. The application requests administrator privileges at startup and reconnects automatically after CS2 restarts.
 
+Startup needs the [cs2-dumper](https://github.com/a2x/cs2-dumper) offset payload: the first run downloads `offsets.json`, `buttons.json` and `client_dll.json` from `raw.githubusercontent.com` and caches them for 6 hours. Point `CS2_OFFSETS_DIR` at a local `output/` directory when fully offline; if the payload cannot be obtained the program reports the error and exits instead of running on stale offsets. See [`external-cheat-base/generated/README.md`](external-cheat-base/generated/README.md).
+
+The overlay interface is in Chinese, so its glyphs are merged in from a system font. The loader probes `CS2_UI_FONT`, then DengXian, Microsoft YaHei, SimHei and SimSun. On a machine with none of them the interface shows empty boxes; point `CS2_UI_FONT` at any font file to fix that.
+
 ## Quick Start
 
 1. Download and extract the latest package from [Releases](https://github.com/tiansongyu/cs2_cheat/releases/latest).
@@ -128,6 +132,7 @@ python3 scripts/sync_web_radar_maps.py
 | Path | Purpose |
 | --- | --- |
 | `external-cheat-base/` | Windows C++ application, overlay, and embedded Radar service |
+| `external-cheat-base/generated/` | cs2-dumper symbol tables and run-time offset resolution (see its [`README.md`](external-cheat-base/generated/README.md)) |
 | `web-radar/` | Browser Radar frontend and map assets |
 | `radar-relay/` | Go public Relay service |
 | `deploy/public-relay/` | Caddy, Docker Compose, and production deployment tools |
@@ -139,6 +144,8 @@ python3 scripts/sync_web_radar_maps.py
 The **Build** badge at the top is generated dynamically by GitHub Actions. Green means the latest `main` build passed; red means a build or test failed. CI runs the C++ regression suite, Web Radar tests and build, Go tests and vulnerability checks, Relay image builds, and the Windows `Release | x64` build.
 
 The **Offsets** workflow checks `cs2-dumper` hourly. It fetches generated headers at an exact commit SHA, validates and commits them, and then triggers the complete build.
+
+The application no longer depends on those commits: the offsets in `external-cheat-base/generated` are resolved from the cs2-dumper JSON payload on every launch, and the literals in the generated headers serve only as an offline fallback and cross-check. The workflow therefore only refreshes the baseline values stored in the repository, not the offsets read at run time. Tools and verification commands are documented in [`external-cheat-base/generated/README.md`](external-cheat-base/generated/README.md).
 
 ## License and Third-Party Assets
 

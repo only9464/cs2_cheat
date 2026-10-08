@@ -573,8 +573,8 @@ void local_fixed_radar::render(
             drawList,
             minimum,
             maximum,
-            "WAITING FOR MAP",
-            "Game snapshot is not connected");
+            "正在等待地图",
+            "游戏快照尚未连接");
         drawList->AddRect(
             minimum,
             maximum,
@@ -586,7 +586,7 @@ void local_fixed_radar::render(
             drawList,
             minimum,
             maximum,
-            "MAP NOT AVAILABLE",
+            "地图不可用",
             snapshot.map.id);
         drawList->AddRect(
             minimum,
@@ -624,7 +624,7 @@ void local_fixed_radar::render(
             drawList,
             minimum,
             maximum,
-            "MAP IMAGE UNAVAILABLE",
+            "地图图像不可用",
             textureCache.error);
     }
 
@@ -749,7 +749,7 @@ void local_fixed_radar::render(
         IM_COL32(225, 234, 239, 255),
         mapLabel.c_str());
     if (snapshotIsStale(snapshot)) {
-        const char* stale = "STALE";
+        const char* stale = "数据过期";
         const ImVec2 staleSize = ImGui::CalcTextSize(stale);
         drawList->AddText(
             ImVec2(maximum.x - staleSize.x - 7.0f, minimum.y + 3.0f),

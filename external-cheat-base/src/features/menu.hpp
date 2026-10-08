@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "imgui.h"
 #include "core/renderer/sdl_renderer.h"
@@ -787,16 +787,19 @@ namespace menu
         const int* target,
         int candidate)
     {
+        // ``name`` is what the user sees in the conflict message, so it is
+        // translated; the binding names passed to RenderHotkeyButton stay
+        // ASCII because they double as ImGui IDs.
         struct Binding
         {
             const char* name;
             const int* key;
         };
         const Binding bindings[] = {
-            { "Menu Toggle", &menuToggleKey },
-            { "Exit Program", &exitKey },
-            { "Aimbot Key", &aimbotKey },
-            { "Triggerbot Key", &triggerbotKey }
+            { "菜单开关", &menuToggleKey },
+            { "退出程序", &exitKey },
+            { "自动瞄准键", &aimbotKey },
+            { "自动扳机键", &triggerbotKey }
         };
         for (const Binding& binding : bindings) {
             if (binding.key != target && *binding.key == candidate) {
@@ -806,22 +809,26 @@ namespace menu
         return nullptr;
     }
 
-    // Render hotkey button
-    inline void RenderHotkeyButton(const char* label, int* keyCode, const char* tooltip = nullptr)
+    // Render hotkey button.
+    //
+    // ``id`` stays ASCII on purpose: it becomes the ImGui widget ID and the
+    // name shown in "already assigned to ..." messages, while ``displayName``
+    // is the Chinese text the user actually reads.
+    inline void RenderHotkeyButton(const char* id, const char* displayName, int* keyCode, const char* tooltip = nullptr)
     {
         const float dpiScale = sdl_renderer::getDpiScale();
-        ImGui::Text("%s:", label);
+        ImGui::Text("%s:", displayName);
         ImGui::SameLine(150.0f * dpiScale);
 
         char buttonLabel[64];
         if (isBindingKey && bindingKeyTarget == keyCode)
         {
-            sprintf_s(buttonLabel, "[Press Key...]##%s", label);
+            sprintf_s(buttonLabel, "[按键中...]##%s", id);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.4f, 0.0f, 1.0f));
         }
         else
         {
-            sprintf_s(buttonLabel, "%s##%s", GetKeyName(*keyCode), label);
+            sprintf_s(buttonLabel, "%s##%s", GetKeyName(*keyCode), id);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.0f));
         }
 
@@ -829,7 +836,7 @@ namespace menu
         {
             isBindingKey = true;
             bindingKeyTarget = keyCode;
-            bindingKeyName = label;
+            bindingKeyName = id;
             bindingWaitingForRelease = true;
             bindingError.clear();
             suppressHotkeysUntilRelease = true;
@@ -873,7 +880,7 @@ namespace menu
             if (const char* conflict =
                     FindHotkeyConflict(bindingKeyTarget, pressedKey)) {
                 bindingError =
-                    std::string("Already assigned to ") + conflict;
+                    std::string("该按键已分配给 ") + conflict;
                 bindingWaitingForRelease = true;
                 return;
             }
@@ -931,8 +938,8 @@ namespace menu
     inline void StatusValue(
         const char* label,
         bool enabled,
-        const char* enabledText = "ON",
-        const char* disabledText = "OFF")
+        const char* enabledText = "开启",
+        const char* disabledText = "关闭")
     {
         ImGui::TextColored(
             ImVec4(0.610f, 0.665f, 0.750f, 1.0f),
@@ -960,16 +967,16 @@ namespace menu
         ImGui::BeginGroup();
         BeginCard(
             "##QuickControls",
-            "Quick controls",
-            "The features you are most likely to toggle mid-session.",
+            "快捷控制",
+            "对局中最常切换的功能。",
             240.0f,
             cardWidth / dpiScale);
-        ImGui::Checkbox("Player ESP", &espEnabled);
-        ImGui::Checkbox("Aimbot", &aimbotEnabled);
-        ImGui::Checkbox("Triggerbot", &triggerbotEnabled);
-        ImGui::Checkbox("Local map Radar", &localRadarEnabled);
-        ImGui::Checkbox("Web Radar", &webRadarEnabled);
-        ImGui::Checkbox("Bomb timer", &bombTimer);
+        ImGui::Checkbox("玩家透视##QuickPlayerEsp", &espEnabled);
+        ImGui::Checkbox("自动瞄准##QuickAimbot", &aimbotEnabled);
+        ImGui::Checkbox("自动扳机##QuickTriggerbot", &triggerbotEnabled);
+        ImGui::Checkbox("本地雷达##QuickLocalRadar", &localRadarEnabled);
+        ImGui::Checkbox("浏览器雷达##QuickWebRadar", &webRadarEnabled);
+        ImGui::Checkbox("炸弹计时##QuickBombTimer", &bombTimer);
         EndCard();
         ImGui::EndGroup();
 
@@ -979,38 +986,38 @@ namespace menu
         ImGui::BeginGroup();
         BeginCard(
             "##SessionStatus",
-            "Session status",
-            "Live renderer and safety information.",
+            "会话状态",
+            "渲染与安全相关的实时信息。",
             240.0f,
             cardWidth / dpiScale);
         StatusValue(
-            "Renderer",
+            "渲染器",
             sdl_renderer::isAcceleratedRenderer(),
-            "HARDWARE",
-            "SOFTWARE");
+            "硬件加速",
+            "软件回退");
         StatusValue(
-            "Game focus",
+            "游戏焦点",
             sdl_renderer::isGameForeground(),
-            "ACTIVE",
-            "PAUSED");
+            "已激活",
+            "已暂停");
         StatusValue(
-            "Single monitor",
+            "单显示器",
             sdl_renderer::isGameOnSingleMonitor(),
-            "VALID",
-            "MOVE GAME");
+            "正常",
+            "请移入单个显示器");
         StatusValue(
-            "Memory writes",
+            "内存写入",
             memory::WritesAllowed(),
-            "UNLOCKED",
-            "LOCKED");
+            "已解锁",
+            "已锁定");
         ImGui::Spacing();
         ImGui::Text(
-            "%u x %u  |  %d Hz target",
+            "%u x %u  |  目标 %d Hz",
             VIEWPORT_W,
             VIEWPORT_H,
             sdl_renderer::getTargetRefreshRate());
         ImGui::Text(
-            "Overlay %.0f FPS",
+            "覆盖层 %.0f FPS",
             ImGui::GetIO().Framerate);
         EndCard();
         ImGui::EndGroup();
@@ -1018,20 +1025,19 @@ namespace menu
         ImGui::Spacing();
         BeginCard(
             "##SafetySummary",
-            "Safe operating mode",
-            "Input is injected only while the CS2 client itself is foreground.",
+            "安全运行模式",
+            "只有当 CS2 客户端本身处于前台时才注入输入。",
             130.0f);
         ImGui::TextWrapped(
-            "The overlay pauses entity reads when CS2 loses focus. "
-            "Memory writes remain disabled unless the program was started "
-            "with --allow-memory-writes.");
+            "CS2 失去焦点时覆盖层会暂停读取实体数据。"
+            "除非程序以 --allow-memory-writes 启动，否则内存写入始终保持禁用。");
         EndCard();
     }
 
     // Render Aimbot tab content
     inline void RenderAimbotTab()
     {
-        ImGui::Checkbox("Enable Aimbot", &aimbotEnabled);
+        ImGui::Checkbox("启用自动瞄准##EnableAimbot", &aimbotEnabled);
 
         if (aimbotEnabled)
         {
@@ -1039,39 +1045,39 @@ namespace menu
             ImGui::Separator();
             ImGui::Spacing();
 
-            ImGui::Checkbox("Smart Aim (Auto-Lock)", &smartAimEnabled);
+            ImGui::Checkbox("智能瞄准（自动锁定）##SmartAim", &smartAimEnabled);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Ignore FOV, auto-aim at best spotted target\nPriority: Spotted > Distance/Health");
+                ImGui::SetTooltip("忽略 FOV，自动瞄准最佳的已发现目标\n优先级：已发现 > 距离/血量");
 
             if (smartAimEnabled) {
                 ImGui::Indent();
-                const char* priorityItems[] = { "Distance First", "Health First" };
-                ImGui::Combo("Priority", &smartAimPriority, priorityItems, IM_ARRAYSIZE(priorityItems));
+                const char* priorityItems[] = { "距离优先", "血量优先" };
+                ImGui::Combo("优先级##AimPriority", &smartAimPriority, priorityItems, IM_ARRAYSIZE(priorityItems));
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Distance: Aim at closest enemy\nHealth: Aim at lowest HP enemy");
+                    ImGui::SetTooltip("距离：瞄准最近的敌人\n血量：瞄准血量最低的敌人");
                 ImGui::Unindent();
             }
 
             if (!smartAimEnabled) {
-                ImGui::SliderFloat("FOV", &aimbotFOV, 1.0f, 30.0f, "%.1f deg");
+                ImGui::SliderFloat("视场角 FOV##AimbotFov", &aimbotFOV, 1.0f, 30.0f, "%.1f 度");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Field of view - only aim at enemies within this angle");
+                    ImGui::SetTooltip("视场角 - 只瞄准该角度范围内的敌人");
             }
 
-            ImGui::SliderFloat("Aim Smoothing", &aimbotSmoothing, 1.0f, 20.0f, "%.1f");
+            ImGui::SliderFloat("瞄准平滑##AimSmoothing", &aimbotSmoothing, 1.0f, 20.0f, "%.1f");
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("1.0 = instant lock, higher = smoother/slower");
+                ImGui::SetTooltip("1.0 = 立即锁定，数值越大越平滑/越慢");
 
-            const char* boneItems[] = { "Head", "Neck", "Chest" };
-            ImGui::Combo("Target Bone", &aimbotBone, boneItems, IM_ARRAYSIZE(boneItems));
+            const char* boneItems[] = { "头部", "颈部", "胸部" };
+            ImGui::Combo("瞄准部位##AimBone", &aimbotBone, boneItems, IM_ARRAYSIZE(boneItems));
 
             if (!smartAimEnabled) {
-                ImGui::Checkbox("Spotted Only", &aimbotVisibleOnly);
+                ImGui::Checkbox("仅已发现目标##SpottedOnly", &aimbotVisibleOnly);
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Uses CS2's spotted flag; this is not a geometric ray-cast");
+                    ImGui::SetTooltip("使用 CS2 的 exposed/spotted 标记；这不是几何射线检测");
             }
 
-            ImGui::Checkbox("Show FOV Circle", &aimbotShowFOV);
+            ImGui::Checkbox("显示 FOV 圆圈##ShowFovCircle", &aimbotShowFOV);
             if (aimbotShowFOV) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##FOVColor", aimbotFOVColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
@@ -1080,44 +1086,44 @@ namespace menu
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Head Offset");
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "头部补偿");
 
-            ImGui::Checkbox("Enable (Side-facing)", &headOffsetEnabled);
+            ImGui::Checkbox("启用（侧身时）##HeadOffsetEnable", &headOffsetEnabled);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Compensate for head position when enemy is facing sideways");
+                ImGui::SetTooltip("敌人侧身时补偿头部位置偏差");
 
             if (headOffsetEnabled) {
                 ImGui::Indent();
-                ImGui::SliderFloat("Offset Amount", &headOffsetAmount, 0.0f, 15.0f, "%.1f units");
+                ImGui::SliderFloat("补偿量##HeadOffsetAmount", &headOffsetAmount, 0.0f, 15.0f, "%.1f 单位");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("How much to offset the head position (5-8 recommended)");
+                    ImGui::SetTooltip("头部位置偏移多少（建议 5-8）");
 
-                ImGui::SliderFloat("Min Angle", &headOffsetAngleMin, 0.0f, 90.0f, "%.0f deg");
-                ImGui::SliderFloat("Max Angle", &headOffsetAngleMax, 90.0f, 180.0f, "%.0f deg");
+                ImGui::SliderFloat("最小角度##HeadOffsetMinAngle", &headOffsetAngleMin, 0.0f, 90.0f, "%.0f 度");
+                ImGui::SliderFloat("最大角度##HeadOffsetMaxAngle", &headOffsetAngleMax, 90.0f, 180.0f, "%.0f 度");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Angle range for offset (45-135 = side-facing)");
+                    ImGui::SetTooltip("偏移生效的角度范围（45-135 为侧身）");
 
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "0=facing you, 90=side, 180=back");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "0=正对你，90=侧身，180=背对");
                 ImGui::Unindent();
             }
 
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Input");
-            ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 0.1f, 10.0f, "%.2f");
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "输入");
+            ImGui::SliderFloat("鼠标灵敏度##MouseSensitivity", &mouseSensitivity, 0.1f, 10.0f, "%.2f");
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Match your in-game mouse sensitivity");
+                ImGui::SetTooltip("与游戏内的鼠标灵敏度保持一致");
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Hold %s to aim", GetKeyName(aimbotKey));
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "按住 %s 开始瞄准", GetKeyName(aimbotKey));
         }
     }
 
     // Render Triggerbot tab content
     inline void RenderTriggerbotTab()
     {
-        ImGui::Checkbox("Enable Triggerbot", &triggerbotEnabled);
+        ImGui::Checkbox("启用自动扳机##EnableTriggerbot", &triggerbotEnabled);
 
         if (triggerbotEnabled)
         {
@@ -1125,22 +1131,22 @@ namespace menu
             ImGui::Separator();
             ImGui::Spacing();
 
-            ImGui::SliderInt("Delay (ms)", &triggerbotDelay, 0, 500, "%d ms");
+            ImGui::SliderInt("延迟（毫秒）##TriggerDelay", &triggerbotDelay, 0, 500, "%d 毫秒");
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Delay before shooting (milliseconds)");
+                ImGui::SetTooltip("开枪前的延迟（毫秒）");
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Hold %s to activate", GetKeyName(triggerbotKey));
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "按住 %s 激活", GetKeyName(triggerbotKey));
             ImGui::TextColored(
                 ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                "Fires only when the crosshair is on a live enemy.");
+                "仅当准星位于存活敌人身上时开火。");
         }
     }
 
     // Render ESP tab content
     inline void RenderESPTab()
     {
-        ImGui::Checkbox("Enable ESP", &espEnabled);
+        ImGui::Checkbox("启用透视##EnableEsp", &espEnabled);
 
         if (espEnabled)
         {
@@ -1149,84 +1155,84 @@ namespace menu
             ImGui::Spacing();
 
             // Box ESP
-            ImGui::Checkbox("Box ESP", &espBox);
+            ImGui::Checkbox("方框透视##EspBox", &espBox);
             if (espBox) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##BoxColor", espBoxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
             }
 
             // Health Bar
-            ImGui::Checkbox("Health Bar", &espHealth);
+            ImGui::Checkbox("血条##EspHealth", &espHealth);
 
             // Weapon Display
-            ImGui::Checkbox("Weapon", &espWeapon);
+            ImGui::Checkbox("武器##EspWeapon", &espWeapon);
             if (espWeapon) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##WeaponColor", espWeaponColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
             }
 
             // View Direction
-            ImGui::Checkbox("View Direction (Box Color)", &espViewAngle);
+            ImGui::Checkbox("朝向（方框颜色）##EspViewAngle", &espViewAngle);
             if (espViewAngle) {
                 ImGui::Indent();
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Facing You: RED");
-                ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.0f, 1.0f), "Partial: ORANGE");
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Side: YELLOW");
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Back: GREEN");
-                ImGui::Checkbox("Show Angle Degrees", &espViewAngleText);
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "正对你：红色");
+                ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.0f, 1.0f), "半侧身：橙色");
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "侧身：黄色");
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "背对：绿色");
+                ImGui::Checkbox("显示角度数值##EspViewAngleText", &espViewAngleText);
                 ImGui::Unindent();
             }
 
             // CS2 spotted-state check. This is intentionally not described as
             // a ray-cast: it is a conservative game-state signal.
-            ImGui::Checkbox("Spotted Check (Triangle)", &espWallCheck);
+            ImGui::Checkbox("已发现检测（三角形）##EspWallCheck", &espWallCheck);
             if (espWallCheck) {
                 ImGui::Indent();
-                ImGui::Text("Spotted Color:");
+                ImGui::Text("已发现颜色：");
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##BoxColor2", espBoxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
-                ImGui::Text("Not Spotted / Unknown:");
+                ImGui::Text("未发现 / 未知：");
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##WallColor", espWallColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
                 ImGui::TextColored(
                     ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                    "Uses CS2 spotted state; never assumes distant targets visible.");
+                    "使用 CS2 的已发现状态；绝不假定远处目标可见。");
                 ImGui::Unindent();
             }
 
             // Distance
-            ImGui::Checkbox("Distance", &espDistance);
+            ImGui::Checkbox("距离##EspDistance", &espDistance);
             if (espDistance) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##DistanceColor", espDistanceColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
             }
 
             // Flashbang Eye Indicator
-            ImGui::Checkbox("Flashbang Eye Indicator", &espFlashIndicator);
+            ImGui::Checkbox("闪光弹眼部指示##EspFlashIndicator", &espFlashIndicator);
             if (espFlashIndicator) {
                 ImGui::Indent();
-                ImGui::Text("Normal Eye:");
+                ImGui::Text("正常眼部：");
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##FlashNormalColor", espFlashNormalColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
-                ImGui::Text("Flashed Eye:");
+                ImGui::Text("被闪眼部：");
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##FlashColor", espFlashColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
                 ImGui::Unindent();
             }
 
             // Snaplines
-            ImGui::Checkbox("Snaplines", &espSnaplines);
+            ImGui::Checkbox("连线##EspSnaplines", &espSnaplines);
             if (espSnaplines) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##SnaplinesColor", espSnaplinesColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
                 ImGui::Indent();
-                const char* origins[] = { "Bottom", "Center", "Top" };
-                ImGui::Combo("Origin", &snaplinesOrigin, origins, IM_ARRAYSIZE(origins));
+                const char* origins[] = { "底部", "中心", "顶部" };
+                ImGui::Combo("起点##SnaplinesOrigin", &snaplinesOrigin, origins, IM_ARRAYSIZE(origins));
                 ImGui::Unindent();
             }
 
             // Skeleton
-            ImGui::Checkbox("Skeleton", &espSkeleton);
+            ImGui::Checkbox("骨骼##EspSkeleton", &espSkeleton);
             if (espSkeleton) {
                 ImGui::SameLine();
                 ImGui::ColorEdit4("##SkeletonColor", espSkeletonColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
@@ -1240,40 +1246,39 @@ namespace menu
     {
         ImGui::TextColored(
             ImVec4(0.330f, 0.800f, 1.000f, 1.0f),
-            "LOCAL FIXED-MAP OVERLAY");
+            "本地固定地图覆盖层");
         ImGui::TextWrapped(
-            "Draws the complete north-up map inside the game overlay. It "
-            "uses the same images and calibration as Web Radar; only player "
-            "direction markers rotate.");
+            "在游戏覆盖层内绘制完整的正北朝上地图。它使用与浏览器雷达相同的"
+            "图片和标定参数；只有玩家方向标记会旋转。");
         ImGui::Spacing();
 
-        ImGui::Checkbox("Enable local map overlay", &localRadarEnabled);
+        ImGui::Checkbox("启用本地地图覆盖层##LocalRadarEnable", &localRadarEnabled);
         if (localRadarEnabled) {
-            ImGui::Checkbox("Show player names", &localRadarShowNames);
+            ImGui::Checkbox("显示玩家名称##LocalRadarNames", &localRadarShowNames);
             ImGui::SliderFloat(
-                "Horizontal position",
+                "水平位置##LocalRadarAnchorX",
                 &localRadarAnchorX,
                 0.0f,
                 1.0f,
                 "%.2f");
             ImGui::SliderFloat(
-                "Vertical position",
+                "垂直位置##LocalRadarAnchorY",
                 &localRadarAnchorY,
                 0.0f,
                 1.0f,
                 "%.2f");
             ImGui::SliderFloat(
-                "Map size",
+                "地图尺寸##LocalRadarSize",
                 &localRadarSize,
                 0.18f,
                 0.65f,
                 "%.2f");
             ImGui::SliderFloat(
-                "Player marker size",
+                "玩家标记大小##LocalRadarMarkerSize",
                 &localRadarMarkerSize,
                 6.0f,
                 24.0f,
-                "%.0f px");
+                "%.0f 像素");
         }
 
         ImGui::Spacing();
@@ -1281,65 +1286,64 @@ namespace menu
         ImGui::Spacing();
         ImGui::TextColored(
             ImVec4(0.330f, 0.800f, 1.000f, 1.0f),
-            "EMBEDDED BROWSER RADAR");
+            "内嵌浏览器雷达");
         ImGui::TextWrapped(
-            "Serves the same fixed map through the embedded CivetWeb service "
-            "for a local browser or trusted LAN viewers.");
+            "通过内嵌的 CivetWeb 服务提供同一套固定地图，供本机浏览器或"
+            "可信局域网内的观看者访问。");
         ImGui::Spacing();
 
-        ImGui::Checkbox("Enable Web Radar", &webRadarEnabled);
-        ImGui::InputInt("HTTP port", &webRadarPort, 1, 100);
+        ImGui::Checkbox("启用浏览器雷达##WebRadarEnable", &webRadarEnabled);
+        ImGui::InputInt("HTTP 端口##WebRadarPort", &webRadarPort, 1, 100);
         webRadarPort = std::clamp(webRadarPort, 1024, 65535);
-        ImGui::Checkbox("Allow viewers on this LAN", &webRadarLanAccess);
+        ImGui::Checkbox("允许局域网观看##WebRadarLanAccess", &webRadarLanAccess);
 
         ImGui::Checkbox(
-            "Pause browser/Relay sampling when CS2 loses focus",
+            "CS2 失去焦点时暂停浏览器/中继采样##WebRadarPauseUnfocused",
             &webRadarPauseWhenUnfocused);
         ImGui::TextWrapped(
-            "The local overlay always pauses when CS2 is unfocused; only "
-            "explicitly shared viewers can opt into background sampling.");
+            "本地覆盖层在 CS2 失去焦点时始终暂停；只有显式共享出去的观看者"
+            "才可以选择后台采样。");
         ImGui::Checkbox(
-            "Share player names",
+            "共享玩家名称##WebRadarPlayerNames",
             &webRadarIncludePlayerNames);
         const char* teamPolicies[] = {
-            "All teams",
-            "Local team only",
-            "Opponents only"
+            "全部队伍",
+            "仅本队",
+            "仅对手"
         };
         ImGui::Combo(
-            "Shared teams",
+            "共享队伍##WebRadarTeams",
             &webRadarTeamViewPolicy,
             teamPolicies,
             IM_ARRAYSIZE(teamPolicies));
         ImGui::Checkbox(
-            "Share Steam IDs (profile links)",
+            "共享 Steam ID（个人资料链接）##WebRadarSteamIds",
             &webRadarIncludeSteamIds);
 
         if (webRadarLanAccess) {
             ImGui::Spacing();
             ImGui::TextColored(
                 ImVec4(0.930f, 0.650f, 0.260f, 1.0f),
-                "LAN MODE");
+                "局域网模式");
             ImGui::TextWrapped(
-                "Anyone who receives the tokenized URL can view the stream. "
-                "Only use it on a trusted private network; do not expose the "
-                "port to the internet.");
+                "任何拿到该带令牌 URL 的人都能查看画面流。请只在可信的私有"
+                "网络中使用；不要把这个端口暴露到公网。");
         }
 
         const WebRadarUiStatus status = getWebRadarStatus();
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::Text("Service: %s", status.running ? "RUNNING" : "STOPPED");
-        ImGui::Text("Bind: %s:%d", status.bindAddress.c_str(), webRadarPort);
-        ImGui::Text("Viewers: %zu", status.viewers);
+        ImGui::Text("服务：%s", status.running ? "运行中" : "已停止");
+        ImGui::Text("监听：%s:%d", status.bindAddress.c_str(), webRadarPort);
+        ImGui::Text("观看者：%zu", status.viewers);
         ImGui::Text(
-            "Frames: %llu published | %llu sent | %llu replaced",
+            "帧：已发布 %llu | 已发送 %llu | 已替换 %llu",
             static_cast<unsigned long long>(status.publishedFrames),
             static_cast<unsigned long long>(status.sentFrames),
             static_cast<unsigned long long>(status.replacedFrames));
         ImGui::Text(
-            "Traffic: %.1f MB | max send latency %.1f ms",
+            "流量：%.1f MB | 最大发送延迟 %.1f ms",
             static_cast<double>(status.publishedBytes) /
                 (1024.0 * 1024.0),
             status.maximumSendLatencyMilliseconds);
@@ -1347,13 +1351,13 @@ namespace menu
         if (!status.error.empty()) {
             ImGui::TextColored(
                 ImVec4(0.930f, 0.420f, 0.430f, 1.0f),
-                "Error: %s",
+                "错误：%s",
                 status.error.c_str());
         }
 
         const bool canOpen = status.running && !status.viewerUrl.empty();
         ImGui::BeginDisabled(!canOpen);
-        if (ImGui::Button("Open Radar")) {
+        if (ImGui::Button("打开雷达##OpenRadar")) {
             ShellExecuteA(
                 nullptr,
                 "open",
@@ -1363,7 +1367,7 @@ namespace menu
                 SW_SHOWNORMAL);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Copy viewer URL")) {
+        if (ImGui::Button("复制观看地址##CopyViewerUrl")) {
             ImGui::SetClipboardText(status.viewerUrl.c_str());
         }
         ImGui::EndDisabled();
@@ -1372,27 +1376,27 @@ namespace menu
             ImGui::TextWrapped("%s", status.viewerUrl.c_str());
             if (webRadarLanAccess) {
                 ImGui::TextWrapped(
-                    "For another device, replace 127.0.0.1 in this URL with "
-                    "this PC's private LAN IPv4 address.");
+                    "在其他设备上使用时，请把这个 URL 里的 127.0.0.1 换成"
+                    "本机的局域网 IPv4 地址。");
             }
         }
 
         ImGui::Spacing();
         ImGui::Checkbox(
-            "Record sanitized Radar snapshots",
+            "记录脱敏雷达快照##RadarRecording",
             &radarRecordingEnabled);
         const web_radar::SnapshotRecorderStatus recording =
             getRecorderStatus();
         if (recording.recording) {
             ImGui::Text(
-                "Recording: %llu frames (%.1f MB), %llu replaced",
+                "录制中：%llu 帧（%.1f MB），已替换 %llu 帧",
                 static_cast<unsigned long long>(recording.framesWritten),
                 static_cast<double>(recording.bytesWritten) /
                     (1024.0 * 1024.0),
                 static_cast<unsigned long long>(recording.replacedFrames));
         }
         if (!recording.path.empty()) {
-            ImGui::TextWrapped("File: %s", recording.path.c_str());
+            ImGui::TextWrapped("文件：%s", recording.path.c_str());
         }
         if (!recording.lastError.empty()) {
             ImGui::TextColored(
@@ -1406,36 +1410,36 @@ namespace menu
         ImGui::Spacing();
         ImGui::TextColored(
             ImVec4(0.330f, 0.800f, 1.000f, 1.0f),
-            "PUBLIC RELAY (OUTBOUND WSS)");
+            "公网中继（出站 WSS）");
         ImGui::TextWrapped(
-            "Publishes snapshots through an authenticated, TLS-protected "
-            "outbound connection. No inbound port or LAN mode is required.");
-        ImGui::Checkbox("Enable Public Relay", &publicRelayEnabled);
+            "通过一条经过鉴权、TLS 保护的出站连接发布快照。不需要开放入站"
+            "端口，也不需要局域网模式。");
+        ImGui::Checkbox("启用公网中继##EnablePublicRelay", &publicRelayEnabled);
 
         ImGui::BeginDisabled(publicRelayEnabled);
         ImGui::InputTextWithHint(
-            "Relay WSS URL",
+            "中继 WSS 地址##RelayUrl",
             "wss://radar.example.com/api/v1/publish",
             publicRelayUrl.data(),
             publicRelayUrl.size(),
             ImGuiInputTextFlags_CharsNoBlank |
                 ImGuiInputTextFlags_AutoSelectAll);
         ImGui::InputTextWithHint(
-            "Relay room",
+            "中继房间##RelayRoom",
             "match-room",
             publicRelayRoom.data(),
             publicRelayRoom.size(),
             ImGuiInputTextFlags_CharsNoBlank |
                 ImGuiInputTextFlags_AutoSelectAll);
         ImGui::InputTextWithHint(
-            "Producer token",
-            "Paste the producer-only token",
+            "生产者令牌##RelayToken",
+            "粘贴仅用于生产的令牌",
             publicRelayToken.data(),
             publicRelayToken.size(),
             ImGuiInputTextFlags_Password |
                 ImGuiInputTextFlags_CharsNoBlank |
                 ImGuiInputTextFlags_AutoSelectAll);
-        if (ImGui::Button("Clear Relay credentials")) {
+        if (ImGui::Button("清除中继凭据##ClearRelayCredentials")) {
             std::fill(publicRelayUrl.begin(), publicRelayUrl.end(), '\0');
             std::fill(publicRelayRoom.begin(), publicRelayRoom.end(), '\0');
             SecureZeroMemory(
@@ -1445,44 +1449,44 @@ namespace menu
         ImGui::EndDisabled();
 
         ImGui::Checkbox(
-            "Share player names through Public Relay",
+            "通过公网中继共享玩家名称##RelayPlayerNames",
             &publicRelayIncludePlayerNames);
         ImGui::Combo(
-            "Relay teams",
+            "中继共享队伍##RelayTeams",
             &publicRelayTeamViewPolicy,
             teamPolicies,
             IM_ARRAYSIZE(teamPolicies));
         ImGui::Checkbox(
-            "Share Steam IDs through Public Relay",
+            "通过公网中继共享 Steam ID##RelaySteamIds",
             &publicRelayIncludeSteamIds);
         ImGui::TextWrapped(
-            "The producer token is kept in memory only and is never shown in "
-            "status or logs. Use a producer token, never a viewer token.");
+            "生产者令牌只保存在内存中，绝不会出现在状态显示或日志里。"
+            "请使用生产者令牌，不要使用观看者令牌。");
 
         const PublicRelayUiStatus relayStatus = getPublicRelayStatus();
-        const char* relayState = "DISABLED";
+        const char* relayState = "已禁用";
         switch (relayStatus.state) {
         case web_radar::PublicRelayState::connecting:
-            relayState = "CONNECTING";
+            relayState = "连接中";
             break;
         case web_radar::PublicRelayState::connected:
-            relayState = "CONNECTED";
+            relayState = "已连接";
             break;
         case web_radar::PublicRelayState::backoff:
-            relayState = "RETRY BACKOFF";
+            relayState = "重试退避中";
             break;
         case web_radar::PublicRelayState::retiring:
-            relayState = "STOPPING";
+            relayState = "正在停止";
             break;
         case web_radar::PublicRelayState::failed:
-            relayState = "FAILED";
+            relayState = "失败";
             break;
         case web_radar::PublicRelayState::disabled:
             break;
         }
-        ImGui::Text("Relay: %s", relayState);
+        ImGui::Text("中继：%s", relayState);
         ImGui::Text(
-            "Frames sent: %llu  |  Replaced: %llu  |  Dropped: %llu  |  Reconnects: %llu",
+            "已发送帧：%llu  |  已替换：%llu  |  已丢弃：%llu  |  重连：%llu",
             static_cast<unsigned long long>(relayStatus.framesSent),
             static_cast<unsigned long long>(relayStatus.replacedFrames),
             static_cast<unsigned long long>(relayStatus.droppedFrames),
@@ -1490,7 +1494,7 @@ namespace menu
         if (!relayStatus.error.empty()) {
             ImGui::TextColored(
                 ImVec4(0.930f, 0.420f, 0.430f, 1.0f),
-                "Relay error: %s",
+                "中继错误：%s",
                 relayStatus.error.c_str());
         }
     }
@@ -1498,21 +1502,21 @@ namespace menu
     // Render Hotkeys tab content
     inline void RenderHotkeysTab()
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Key Bindings");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "按键绑定");
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
-        RenderHotkeyButton("Menu Toggle", &menuToggleKey, "Key to show/hide menu");
-        RenderHotkeyButton("Exit Program", &exitKey, "Key to exit the program");
-        RenderHotkeyButton("Aimbot Key", &aimbotKey, "Hold to activate aimbot");
-        RenderHotkeyButton("Triggerbot Key", &triggerbotKey, "Hold to activate triggerbot");
+        RenderHotkeyButton("Menu Toggle", "菜单开关", &menuToggleKey, "显示/隐藏菜单的按键");
+        RenderHotkeyButton("Exit Program", "退出程序", &exitKey, "退出程序的按键");
+        RenderHotkeyButton("Aimbot Key", "自动瞄准键", &aimbotKey, "按住以激活自动瞄准");
+        RenderHotkeyButton("Triggerbot Key", "自动扳机键", &triggerbotKey, "按住以激活自动扳机");
 
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Click button and press any key to bind");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Press ESC to cancel binding");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "点击按钮后按任意键完成绑定");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "按 ESC 取消绑定");
         if (!bindingError.empty()) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.35f, 0.35f, 1.0f),
@@ -1524,94 +1528,94 @@ namespace menu
     // Render Settings tab content
     inline void RenderMiscTab()
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Misc Features");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "其他功能");
         ImGui::Separator();
         ImGui::Spacing();
 
         if (!memory::WritesAllowed()) {
             ImGui::BeginDisabled();
         }
-        ImGui::Checkbox("Anti-Flash", &antiFlash);
+        ImGui::Checkbox("防闪光##AntiFlash", &antiFlash);
         if (!memory::WritesAllowed()) {
             antiFlash = false;
             ImGui::EndDisabled();
             ImGui::TextColored(
                 ImVec4(1.0f, 0.65f, 0.1f, 1.0f),
-                "Memory writes locked. Start with --allow-memory-writes to enable.");
+                "内存写入已锁定。请以 --allow-memory-writes 启动以启用。");
         }
-        ImGui::Checkbox("Bomb Timer", &bombTimer);
+        ImGui::Checkbox("炸弹计时##MiscBombTimer", &bombTimer);
 
         ImGui::Spacing();
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "World ESP");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "世界透视");
         ImGui::Spacing();
-        ImGui::Checkbox("Grenade ESP", &grenadeESP);
-        ImGui::Checkbox("Dropped Weapon ESP", &droppedWeaponESP);
+        ImGui::Checkbox("投掷物透视##GrenadeEsp", &grenadeESP);
+        ImGui::Checkbox("掉落武器透视##DroppedWeaponEsp", &droppedWeaponESP);
     }
 
     inline void RenderSettingsTab()
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Performance");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "性能");
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
         ImGui::TextColored(
             ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
-            "Overlay target: %d FPS (%s)",
+            "覆盖层目标帧率：%d FPS（%s）",
             sdl_renderer::getTargetRefreshRate(),
             sdl_renderer::isVsyncEnabled()
-                ? "VSync"
-                : "paced fallback");
+                ? "垂直同步"
+                : "定时回退");
         ImGui::Text(
-            "Renderer: %s",
+            "渲染器：%s",
             sdl_renderer::isAcceleratedRenderer()
-                ? "Hardware accelerated"
-                : "Software fallback (limited to 60 FPS)");
+                ? "硬件加速"
+                : "软件回退（限制为 60 FPS）");
         if (!sdl_renderer::isGameOnSingleMonitor()) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.5f, 0.1f, 1.0f),
-                "Move CS2 fully onto one monitor for reliable mixed-DPI mapping.");
+                "请把 CS2 完整移动到单个显示器内，以保证混合 DPI 映射可靠。");
         }
         if (!sdl_renderer::isDpiAwarenessReliable()) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
-                "Per-monitor DPI awareness is unavailable.");
+                "当前环境不支持按显示器区分的 DPI 感知。");
         }
         const char* viewportModes[] = {
-            "Auto-detect black bars",
-            "Full client (stretched)",
-            "Force 4:3 black bars",
-            "Force 16:10 black bars"
+            "自动检测黑边",
+            "完整客户端（拉伸）",
+            "强制 4:3 黑边",
+            "强制 16:10 黑边"
         };
         ImGui::Combo(
-            "Game Viewport",
+            "游戏视口##GameViewport",
             &viewportMode,
             viewportModes,
             IM_ARRAYSIZE(viewportModes));
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Auto is recommended. Use a forced mode only if a capture-"
-                "protected or very dark scene prevents black-bar detection.");
+                "推荐使用自动。只有当画面受保护或场景过暗导致黑边检测失败时，"
+                "才使用强制模式。");
         }
 
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "System Info");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "系统信息");
         ImGui::Spacing();
 
-        ImGui::Text("Resolution: %dx%d", WIDTH, HEIGHT);
+        ImGui::Text("分辨率：%dx%d", WIDTH, HEIGHT);
         ImGui::Text(
-            "Game viewport: %dx%d at (%d, %d)",
+            "游戏视口：%dx%d，位于 (%d, %d)",
             VIEWPORT_W,
             VIEWPORT_H,
             VIEWPORT_X,
             VIEWPORT_Y);
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("FPS：%.1f", ImGui::GetIO().Framerate);
         const float frameRate = ImGui::GetIO().Framerate;
         ImGui::Text(
-            "Frame Time: %.3f ms",
+            "帧耗时：%.3f ms",
             frameRate > 0.0f ? 1000.0f / frameRate : 0.0f);
 
         const auto samplingMetrics =
@@ -1622,7 +1626,7 @@ namespace menu
             performance_metrics::renderCpuDuration.snapshot();
         const memory::ReadMetrics readMetrics = memory::GetReadMetrics();
         ImGui::Text(
-            "Sampling: %d Hz | Radar: %d Hz | avg %.2f ms | P95 %.2f | P99 %.2f",
+            "采样：%d Hz | 雷达：%d Hz | 平均 %.2f ms | P95 %.2f | P99 %.2f",
             performance_metrics::samplingRateHz.load(
                 std::memory_order_relaxed),
             performance_metrics::radarRateHz.load(
@@ -1631,23 +1635,23 @@ namespace menu
             samplingMetrics.p95Milliseconds,
             samplingMetrics.p99Milliseconds);
         ImGui::Text(
-            "Render CPU: avg %.2f ms | P95 %.2f | P99 %.2f",
+            "渲染 CPU：平均 %.2f ms | P95 %.2f | P99 %.2f",
             renderMetrics.averageMilliseconds,
             renderMetrics.p95Milliseconds,
             renderMetrics.p99Milliseconds);
         ImGui::Text(
-            "Radar JSON: avg %.2f ms | P95 %.2f | max %.2f",
+            "雷达 JSON：平均 %.2f ms | P95 %.2f | 最大 %.2f",
             serializationMetrics.averageMilliseconds,
             serializationMetrics.p95Milliseconds,
             serializationMetrics.maximumMilliseconds);
         ImGui::Text(
-            "RPM: %llu calls | %.1f MB | %llu failed",
+            "RPM：%llu 次调用 | %.1f MB | %llu 次失败",
             static_cast<unsigned long long>(readMetrics.calls),
             static_cast<double>(readMetrics.bytesRequested) /
                 (1024.0 * 1024.0),
             static_cast<unsigned long long>(readMetrics.failures));
         ImGui::Text(
-            "Missed deadlines: sample %llu | render %llu",
+            "错过截止时间：采样 %llu 次 | 渲染 %llu 次",
             static_cast<unsigned long long>(
                 performance_metrics::missedSamplingDeadlines.load(
                     std::memory_order_relaxed)),
@@ -1662,14 +1666,14 @@ namespace menu
             startupReport.ready()
                 ? ImVec4(0.250f, 0.900f, 0.600f, 1.0f)
                 : ImVec4(0.930f, 0.420f, 0.430f, 1.0f),
-            "Startup self-check: %s",
-            startupReport.ready() ? "READY" : "ATTENTION");
+            "启动自检：%s",
+            startupReport.ready() ? "就绪" : "需要处理");
         ImGui::Text(
-            "Admin %s | SDL %s | Web bundle %s | Maps %s",
-            startupReport.administrator ? "OK" : "FAIL",
-            startupReport.sdlRuntimePresent ? "OK" : "FAIL",
-            startupReport.webRadarBundlePresent ? "OK" : "FAIL",
-            startupReport.mapMetadataPresent ? "OK" : "FAIL");
+            "管理员 %s | SDL %s | Web 资源 %s | 地图 %s",
+            startupReport.administrator ? "正常" : "缺失",
+            startupReport.sdlRuntimePresent ? "正常" : "缺失",
+            startupReport.webRadarBundlePresent ? "正常" : "缺失",
+            startupReport.mapMetadataPresent ? "正常" : "缺失");
         if (!startupReport.installationError.empty()) {
             ImGui::TextWrapped(
                 "%s",
@@ -1680,7 +1684,7 @@ namespace menu
         ImGui::Separator();
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "CS2 External ESP v2.0");
-        ImGui::Text("SDL2 + ImGui Overlay");
+        ImGui::Text("SDL2 + ImGui 覆盖层");
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "github.com/tiansongyu/cs2_cheat");
     }
@@ -1705,20 +1709,20 @@ namespace menu
     inline void RenderCombatPage()
     {
         RenderPageHeader(
-            "Combat assistance",
-            "Target selection and input automation. All input is focus-gated.");
+            "战斗辅助",
+            "目标选择与输入自动化。所有输入都受前台状态门控。");
         BeginCard(
             "##AimbotCard",
-            "Aimbot",
-            "Real bone targets with stable target retention.",
+            "自动瞄准",
+            "基于真实骨骼目标，并保持目标不抖动。",
             590.0f);
         RenderAimbotTab();
         EndCard();
         ImGui::Spacing();
         BeginCard(
             "##TriggerCard",
-            "Triggerbot",
-            "Uses the actual entity under the crosshair; no angular guessing.",
+            "自动扳机",
+            "使用准星下的真实实体，不做角度猜测。",
             190.0f);
         RenderTriggerbotTab();
         EndCard();
@@ -1727,12 +1731,12 @@ namespace menu
     inline void RenderPlayerVisualsPage()
     {
         RenderPageHeader(
-            "Player visuals",
-            "Configure information drawn around validated live enemy pawns.");
+            "玩家视觉",
+            "配置环绕已校验的存活敌人绘制的信息。");
         BeginCard(
             "##PlayerEspCard",
-            "Player ESP",
-            "Boxes, health, skeleton, equipment and threat direction.",
+            "玩家透视",
+            "方框、血量、骨骼、装备与朝向威胁指示。",
             650.0f);
         RenderESPTab();
         EndCard();
@@ -1741,20 +1745,20 @@ namespace menu
     inline void RenderWorldPage()
     {
         RenderPageHeader(
-            "World and match",
-            "Shared Web Radar, bomb state and moving world entities.");
+            "世界与对局",
+            "共享 Web 雷达、炸弹状态与移动中的世界实体。");
         BeginCard(
             "##RadarCard",
-            "Fixed-map Radar",
-            "One north-up map model for the local overlay, CivetWeb and Relay.",
+            "固定地图雷达",
+            "本地覆盖层、CivetWeb 与中继共用同一套正北朝上的地图模型。",
             870.0f);
         RenderRadarTab();
         EndCard();
         ImGui::Spacing();
         BeginCard(
             "##WorldUtilityCard",
-            "Match utilities",
-            "Bomb timer, projectiles, dropped equipment and anti-flash.",
+            "对局辅助",
+            "炸弹计时、投掷物、掉落装备与防闪光。",
             255.0f);
         RenderMiscTab();
         EndCard();
@@ -1763,20 +1767,20 @@ namespace menu
     inline void RenderSystemPage()
     {
         RenderPageHeader(
-            "System",
-            "Display mapping, performance diagnostics and key bindings.");
+            "系统",
+            "显示映射、性能诊断与按键绑定。");
         BeginCard(
             "##DisplayCard",
-            "Display and renderer",
-            "Monitor-aware viewport mapping and live diagnostics.",
+            "显示与渲染",
+            "感知显示器的视口映射与实时诊断。",
             460.0f);
         RenderSettingsTab();
         EndCard();
         ImGui::Spacing();
         BeginCard(
             "##HotkeyCard",
-            "Hotkeys",
-            "Bindings must be unique; input pauses while rebinding.",
+            "快捷键",
+            "绑定必须互不重复；重新绑定期间输入会暂停。",
             330.0f);
         RenderHotkeysTab();
         EndCard();
@@ -1856,7 +1860,7 @@ namespace menu
         );
 
         ImGui::Begin(
-            "Aegis // CS2 Overlay",
+            "Aegis // CS2 覆盖层",
             nullptr,
             ImGuiWindowFlags_NoCollapse);
 
@@ -1901,7 +1905,7 @@ namespace menu
             "AEGIS");
         ImGui::TextColored(
             ImVec4(0.500f, 0.570f, 0.670f, 1.0f),
-            "CS2 OVERLAY");
+            "CS2 覆盖层");
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -1909,11 +1913,11 @@ namespace menu
         const ImVec2 navigationSize(
             ImGui::GetContentRegionAvail().x,
             navigationHeight);
-        NavigationButton("Overview", 0, navigationSize);
-        NavigationButton("Combat", 1, navigationSize);
-        NavigationButton("Player visuals", 2, navigationSize);
-        NavigationButton("World & Radar", 3, navigationSize);
-        NavigationButton("System", 4, navigationSize);
+        NavigationButton("总览##NavOverview", 0, navigationSize);
+        NavigationButton("战斗##NavCombat", 1, navigationSize);
+        NavigationButton("玩家视觉##NavVisuals", 2, navigationSize);
+        NavigationButton("世界与雷达##NavWorld", 3, navigationSize);
+        NavigationButton("系统##NavSystem", 4, navigationSize);
 
         const float footerHeight = 104.0f * dpiScale;
         if (ImGui::GetContentRegionAvail().y > footerHeight) {
@@ -1926,11 +1930,11 @@ namespace menu
                 ? ImVec4(0.250f, 0.900f, 0.600f, 1.0f)
                 : ImVec4(0.930f, 0.650f, 0.260f, 1.0f),
             sdl_renderer::isGameForeground()
-                ? "GAME ACTIVE"
-                : "INPUT PAUSED");
+                ? "游戏前台"
+                : "输入已暂停");
         ImGui::TextColored(
             ImVec4(0.500f, 0.570f, 0.670f, 1.0f),
-            "%s menu  |  %s exit",
+            "%s 菜单  |  %s 退出",
             GetKeyName(menuToggleKey),
             GetKeyName(exitKey));
         ImGui::EndChild();
@@ -1957,8 +1961,8 @@ namespace menu
         default:
             currentTab = 0;
             RenderPageHeader(
-                "Overview",
-                "Quick controls and a live view of the current session.");
+                "总览",
+                "快捷控制，以及当前会话的实时状态。");
             RenderOverview();
             break;
         }

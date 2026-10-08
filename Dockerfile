@@ -158,6 +158,13 @@ RUN mkdir -p /tmp/third-party \
 
 # Treat warnings in project-owned Windows sources as errors. Third-party SDL2
 # and ImGui sources are linked in the next step without inheriting that policy.
+#
+# The interface strings are Chinese, so the sources below are UTF-8 with and
+# without a BOM. GCC reads the input charset correctly by default but emits
+# narrow literals in the execution charset, which would corrupt the UI on a
+# non-UTF-8 host locale. The two options have to be given together: passing
+# only -fexec-charset makes GCC reject the source charset it would otherwise
+# assume.
 RUN set -eu; \
     mkdir -p /tmp/strict \
     && for source in \
@@ -184,6 +191,8 @@ RUN set -eu; \
             -DUSE_WEBSOCKET \
             -DUSE_IPV6 \
             -D_WIN32_WINNT=0x0A00 \
+            -finput-charset=UTF-8 \
+            -fexec-charset=UTF-8 \
             -Wall \
             -Wextra \
             -Wpedantic \
@@ -222,6 +231,8 @@ RUN mkdir -p /artifacts \
         -DUSE_WEBSOCKET \
         -DUSE_IPV6 \
         -D_WIN32_WINNT=0x0A00 \
+        -finput-charset=UTF-8 \
+        -fexec-charset=UTF-8 \
         -Wno-unknown-pragmas \
         -Iexternal-cheat-base/vendor/SDL2/include \
         -Iexternal-cheat-base/vendor/imgui \

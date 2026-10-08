@@ -27,14 +27,18 @@ namespace game_layout
     // pointer offset isolated and validate the pointed-to string before use.
     constexpr uintptr_t GLOBAL_VARS_MAP_NAME = 0x188;
 
-    constexpr uintptr_t spottedFlagOffset()
+    // Not constexpr any more: the generated schema constants resolve at run time
+    // from the cs2-dumper payload fetched during startup, so these two can only
+    // be computed once the registry is live. Both call sites (esp.cpp) already
+    // evaluate them per use.
+    inline uintptr_t spottedFlagOffset()
     {
         return static_cast<uintptr_t>(
             cs2_dumper::schemas::client_dll::
                 EntitySpottedState_t::m_bSpotted);
     }
 
-    constexpr uintptr_t boneArrayPointerOffset()
+    inline uintptr_t boneArrayPointerOffset()
     {
         return static_cast<uintptr_t>(
             cs2_dumper::schemas::client_dll::

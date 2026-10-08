@@ -12,6 +12,7 @@
 #include <condition_variable>
 #include <iterator>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -1747,6 +1748,119 @@ void sdl_renderer::draw::filledBox(int x, int y, int w, int h, uint8_t r, uint8_
     SDL_RenderFillRect(renderer, &rect);
 }
 
+    // ImGui takes font paths as UTF-8 and hands them to the Win32 wide-char
+    // file API, so the system path has to be transcoded rather than narrowed
+    // byte by byte.
+    std::string toUtf8(const std::wstring& text)
+    {
+        if (text.empty()) {
+            return {};
+        }
+
+        const int size = WideCharToMultiByte(
+            CP_UTF8, 0, text.data(), static_cast<int>(text.size()),
+            nullptr, 0, nullptr, nullptr);
+        if (size <= 0) {
+            return {};
+        }
+
+        std::string utf8(static_cast<std::size_t>(size), '\0');
+        WideCharToMultiByte(
+            CP_UTF8, 0, text.data(), static_cast<int>(text.size()),
+            utf8.data(), size, nullptr, nullptr);
+        return utf8;
+    }
+
+    // Reads a wide environment variable. Returns false when it is unset, which
+    // is what the font lookup below treats as "no override requested".
+    bool readEnvironmentVariable(const wchar_t* name, std::wstring& value)
+    {
+        const DWORD needed = GetEnvironmentVariableW(name, nullptr, 0);
+        if (needed == 0) {
+            return false;
+        }
+
+        std::wstring buffer(needed, L'\0');
+        const DWORD written = GetEnvironmentVariableW(name, buffer.data(), needed);
+        if (written == 0 || written >= needed) {
+            return false;
+        }
+
+        buffer.resize(written);
+        value = std::move(buffer);
+        return true;
+    }
+
+    // The UI is written in Chinese, and the default ImGui font (ProggyVector)
+    // only carries ASCII - every label would come out as replacement boxes.
+    // These are the ranges the translated interface actually needs: ASCII,
+    // Latin punctuation and quotes, CJK punctuation plus kana, the unified
+    // ideographs, and fullwidth forms. ImGui wants a zero-terminated list, so
+    // the trailing 0 is part of the array rather than an oversight.
+    const ImWchar* interfaceGlyphRanges()
+    {
+        static const ImWchar ranges[] = {
+            0x0020, 0x007F,  // Basic Latin
+            0x00A0, 0x00FF,  // Latin-1 supplement
+            0x2010, 0x203B,  // dashes, curly quotes, ellipsis
+            0x2190, 0x2193,  // arrows, used by the radar floor markers
+            0x3000, 0x30FF,  // CJK punctuation and kana
+            0x4E00, 0x9FA5,  // unified ideographs
+            0xFF00, 0xFFEF,  // fullwidth forms
+            0,
+        };
+        return ranges;
+    }
+
+    // Loads a CJK-capable font and merges it underneath the default one, so
+    // ASCII keeps the original pixel look while Chinese resolves from a system
+    // font. Falls back to the ASCII-only font when nothing can be loaded: the
+    // interface is then unreadable but the program still runs.
+    void loadInterfaceFont(ImGuiIO& io, const ImFontConfig& baseConfig)
+    {
+        const wchar_t* const candidates[] = {
+            L"\\Fonts\\Deng.ttf",   // DengXian, the modern UI face
+            L"\\Fonts\\msyh.ttc",   // Microsoft YaHei
+            L"\\Fonts\\msyh.ttf",
+            L"\\Fonts\\simhei.ttf", // SimHei
+            L"\\Fonts\\simsun.ttc", // SimSun
+        };
+
+        std::vector<std::wstring> paths;
+        std::wstring override;
+        if (readEnvironmentVariable(L"CS2_UI_FONT", override) && !override.empty()) {
+            paths.push_back(std::move(override));
+        }
+
+        wchar_t windowsDirectory[MAX_PATH]{};
+        const UINT windowsLength =
+            GetWindowsDirectoryW(windowsDirectory, MAX_PATH);
+        if (windowsLength > 0 && windowsLength < MAX_PATH) {
+            const std::wstring prefix(windowsDirectory, windowsLength);
+            for (const wchar_t* candidate : candidates) {
+                paths.push_back(prefix + candidate);
+            }
+        }
+
+        ImFontConfig mergeConfig = baseConfig;
+        mergeConfig.MergeMode = true;
+        const ImWchar* ranges = interfaceGlyphRanges();
+
+        for (const std::wstring& path : paths) {
+            if (GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                continue;
+            }
+
+            if (io.Fonts->AddFontFromFileTTF(
+                    toUtf8(path).c_str(),
+                    BASE_FONT_SIZE,
+                    &mergeConfig,
+                    ranges) != nullptr) {
+                return;
+            }
+        }
+    }
+
 bool sdl_renderer::initImGui()
 {
     IMGUI_CHECKVERSION();
@@ -1759,6 +1873,7 @@ bool sdl_renderer::initImGui()
     fontConfig.OversampleH = 1;
     fontConfig.OversampleV = 1;
     io.Fonts->AddFontDefaultVector(&fontConfig);
+    loadInterfaceFont(io, fontConfig);
 
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();

@@ -816,19 +816,19 @@ namespace
             if (config.grenadeESP) {
                 if (name == "smokegrenade_projectile") {
                     type = 0;
-                    displayName = "Smoke";
+                    displayName = "烟雾弹";
                 } else if (name == "flashbang_projectile") {
                     type = 1;
-                    displayName = "Flash";
+                    displayName = "闪光弹";
                 } else if (name == "hegrenade_projectile") {
                     type = 2;
-                    displayName = "HE";
+                    displayName = "高爆手雷";
                 } else if (name == "molotov_projectile") {
                     type = 3;
-                    displayName = "Molotov";
+                    displayName = "燃烧弹";
                 } else if (name == "decoy_projectile") {
                     type = 4;
-                    displayName = "Decoy";
+                    displayName = "诱饵弹";
                 }
             }
 
@@ -2059,7 +2059,7 @@ void esp::render()
             if (menu::espViewAngleText &&
                 enemy.viewAngleKnown) {
                 char angleText[16];
-                snprintf(angleText, sizeof(angleText), "%.0f deg", enemy.angleToPlayer);
+                snprintf(angleText, sizeof(angleText), "%.0f 度", enemy.angleToPlayer);
                 ImVec2 angleTextSize = ImGui::CalcTextSize(angleText);
                 drawList->AddText(
                     ImVec2(
@@ -2076,7 +2076,7 @@ void esp::render()
         // Draw distance text using ImGui
         if (menu::espDistance) {
             char distText[32];
-            snprintf(distText, sizeof(distText), "%.0fm", enemy.distance / 100.0f);
+            snprintf(distText, sizeof(distText), "%.0f 米", enemy.distance / 100.0f);
 
             uint8_t dr = static_cast<uint8_t>(menu::espDistanceColor[0] * 255);
             uint8_t dg = static_cast<uint8_t>(menu::espDistanceColor[1] * 255);
@@ -2310,7 +2310,7 @@ void esp::renderBombTimer()
 
     const char* site = snapBomb.bombSite == 0 ? "A" : "B";
     char bombText[64];
-    snprintf(bombText, sizeof(bombText), "BOMB [%s]: %.1fs", site, timeLeft);
+    snprintf(bombText, sizeof(bombText), "炸弹 [%s]：%.1f 秒", site, timeLeft);
 
     ImU32 bombColor;
     if (timeLeft <= 5.0f)
@@ -2336,7 +2336,7 @@ void esp::renderBombTimer()
         if (defuseLeft < 0.0f) defuseLeft = 0.0f;
 
         char defuseText[64];
-        snprintf(defuseText, sizeof(defuseText), "DEFUSING: %.1fs", defuseLeft);
+        snprintf(defuseText, sizeof(defuseText), "正在拆弹：%.1f 秒", defuseLeft);
 
         ImU32 defuseColor;
         if (defuseLeft < timeLeft)

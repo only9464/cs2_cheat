@@ -45,6 +45,10 @@
 
 覆盖层仅支持完整位于单个显示器中的游戏窗口。跨显示器时会暂停渲染，窗口恢复后自动继续；独占全屏不受支持。程序启动时会请求管理员权限，并能在 CS2 重启后自动重新连接。
 
+启动时需要能拿到 [cs2-dumper](https://github.com/a2x/cs2-dumper) 的偏移载荷：首次运行会从 `raw.githubusercontent.com` 下载 `offsets.json`、`buttons.json` 和 `client_dll.json`，之后缓存 6 小时。完全离线时用 `CS2_OFFSETS_DIR` 指向本地的 `output/` 目录；拿不到载荷程序会直接报错退出，而不是使用过期的偏移。详见 [`external-cheat-base/generated/README.md`](external-cheat-base/generated/README.md)。
+
+覆盖层界面是中文的，中文字形从系统字体合并而来，按 `CS2_UI_FONT` 环境变量 → 等线 → 微软雅黑 → 黑体 → 宋体的顺序探测。系统里一个都找不到时界面会显示成方块，此时用 `CS2_UI_FONT` 指定一个字体文件即可。
+
 ## 快速开始
 
 1. 从 [Releases](https://github.com/tiansongyu/cs2_cheat/releases/latest) 下载并解压最新版本。
@@ -128,6 +132,7 @@ python3 scripts/sync_web_radar_maps.py
 | 路径 | 内容 |
 | --- | --- |
 | `external-cheat-base/` | Windows C++ 主程序、覆盖层和内嵌 Radar 服务 |
+| `external-cheat-base/generated/` | cs2-dumper 符号表与运行时偏移解析（含 [`README.md`](external-cheat-base/generated/README.md)） |
 | `web-radar/` | 浏览器 Radar 前端与地图资源 |
 | `radar-relay/` | Go 公网 Relay 服务 |
 | `deploy/public-relay/` | Caddy、Docker Compose 和生产部署工具 |
@@ -139,6 +144,11 @@ python3 scripts/sync_web_radar_maps.py
 顶部的 **Build** 徽章由 GitHub Actions 动态生成：绿色表示 `main` 分支最近一次构建成功，红色表示构建或测试失败。CI 会执行 C++ 回归测试、Web Radar 测试与构建、Go 测试与漏洞检查、Relay 镜像构建以及 Windows `Release | x64` 编译。
 
 **Offsets** 工作流每小时检查一次 `cs2-dumper` 更新。偏移文件按确切提交 SHA 获取、验证并提交，验证通过后才触发完整构建。
+
+程序本身不再依赖这些提交：`external-cheat-base/generated` 里的偏移量在每次启动时
+从 cs2-dumper 的 JSON 载荷解析，生成头文件里的字面量只作为离线回退和交叉校验。
+因此 CI 的偏移更新只影响仓库里的基线值，不影响运行时读取到的偏移。相关工具与
+验证命令见 [`external-cheat-base/generated/README.md`](external-cheat-base/generated/README.md)。
 
 ## 许可证与第三方资产
 

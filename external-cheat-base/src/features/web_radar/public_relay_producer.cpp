@@ -213,7 +213,7 @@ namespace web_radar
                     started_ = false;
                     status_.state = PublicRelayState::failed;
                     status_.lastError =
-                        "Unable to start the Relay network worker.";
+                        "无法启动中继网络线程。";
                     return false;
                 }
                 return true;
@@ -226,7 +226,7 @@ namespace web_radar
                     started_ = false;
                     status_.state = PublicRelayState::failed;
                     status_.lastError.clear();
-                    status_.lastError = "Unable to initialize Public Relay.";
+                    status_.lastError = "无法初始化公网中继。";
                 } catch (...) {
                 }
                 return false;
@@ -543,7 +543,7 @@ namespace web_radar
                     if (!stopping_) {
                         status_.state = PublicRelayState::failed;
                         status_.lastError =
-                            "Relay network worker stopped unexpectedly.";
+                            "中继网络线程意外停止。";
                     }
                 } catch (...) {
                     // Preserve noexcept at the thread boundary even under
@@ -675,7 +675,7 @@ namespace web_radar
 
                 if (frame->size() >
                     static_cast<std::size_t>(std::numeric_limits<DWORD>::max())) {
-                    error = "Relay snapshot exceeds the WinHTTP frame limit.";
+                    error = "中继快照超出 WinHTTP 单帧上限。";
                     return false;
                 }
                 const DWORD result = WinHttpWebSocketSend(

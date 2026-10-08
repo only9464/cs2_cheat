@@ -166,10 +166,10 @@ namespace web_radar
         };
 
         if (url.empty() || url.size() > 2048) {
-            return reject("Relay URL must contain 1 to 2048 characters.");
+            return reject("中继 URL 长度必须在 1 到 2048 个字符之间。");
         }
         if (!detail::relayStartsWithWss(url)) {
-            return reject("Relay URL must use wss://.");
+            return reject("中继 URL 必须使用 wss://。");
         }
 
         const std::string_view remainder = url.substr(6);
@@ -179,19 +179,19 @@ namespace web_radar
             ? std::string_view{"/"}
             : remainder.substr(pathOffset);
         if (authority.empty()) {
-            return reject("Relay URL is missing a host.");
+            return reject("中继 URL 缺少主机名。");
         }
         if (authority.find('@') != std::string_view::npos) {
-            return reject("Relay URL must not contain user information.");
+            return reject("中继 URL 不能包含用户信息。");
         }
         if (path.find('?') != std::string_view::npos ||
             path.find('#') != std::string_view::npos) {
-            return reject("Relay URL must not contain a query or fragment.");
+            return reject("中继 URL 不能包含查询串或片段。");
         }
         for (const char rawCharacter : path) {
             const auto character = static_cast<unsigned char>(rawCharacter);
             if (character <= 0x20U || character >= 0x7fU || character == '\\') {
-                return reject("Relay URL path contains an unsupported character.");
+                return reject("中继 URL 的路径含有不支持的字符。");
             }
         }
 
@@ -203,20 +203,20 @@ namespace web_radar
         if (authority.front() == '[') {
             const std::size_t closingBracket = authority.find(']');
             if (closingBracket == std::string_view::npos || closingBracket == 1) {
-                return reject("Relay URL contains an invalid IPv6 host.");
+                return reject("中继 URL 含有无效的 IPv6 主机名。");
             }
             host = authority.substr(1, closingBracket - 1);
             const std::string_view suffix = authority.substr(closingBracket + 1);
             if (!suffix.empty()) {
                 if (suffix.front() != ':') {
-                    return reject("Relay URL contains an invalid host suffix.");
+                    return reject("中继 URL 含有无效的主机名后缀。");
                 }
                 explicitPort = true;
                 portText = suffix.substr(1);
             }
             if (host.size() > 45 ||
                 host.find(':') == std::string_view::npos) {
-                return reject("Relay URL contains an invalid IPv6 host.");
+                return reject("中继 URL 含有无效的 IPv6 主机名。");
             }
             for (const char rawCharacter : host) {
                 const auto character = static_cast<unsigned char>(rawCharacter);
@@ -225,14 +225,14 @@ namespace web_radar
                     (character >= 'A' && character <= 'F') ||
                     (character >= '0' && character <= '9');
                 if (!hexadecimal && character != ':' && character != '.') {
-                    return reject("Relay URL contains an invalid IPv6 host.");
+                    return reject("中继 URL 含有无效的 IPv6 主机名。");
                 }
             }
         } else {
             const std::size_t colon = authority.rfind(':');
             if (colon != std::string_view::npos) {
                 if (authority.find(':') != colon) {
-                    return reject("IPv6 hosts in Relay URLs must use brackets.");
+                    return reject("中继 URL 中的 IPv6 主机名必须加方括号。");
                 }
                 host = authority.substr(0, colon);
                 explicitPort = true;
@@ -241,17 +241,17 @@ namespace web_radar
                 host = authority;
             }
             if (host.empty()) {
-                return reject("Relay URL is missing a host.");
+                return reject("中继 URL 缺少主机名。");
             }
             if (!detail::validRelayDnsHost(host)) {
-                return reject("Relay URL contains an invalid host.");
+                return reject("中继 URL 含有无效的主机名。");
             }
         }
 
         endpoint.host.assign(host);
         if (explicitPort &&
             !detail::validRelayPort(portText, endpoint.port)) {
-            return reject("Relay URL contains an invalid port.");
+            return reject("中继 URL 含有无效的端口。");
         }
         if (error != nullptr) {
             error->clear();
@@ -267,22 +267,22 @@ namespace web_radar
             return error;
         }
         if (config.room.size() < 3 || config.room.size() > 64) {
-            return "Relay room must contain 3 to 64 characters.";
+            return "中继房间名长度必须在 3 到 64 个字符之间。";
         }
         for (const char rawCharacter : config.room) {
             const auto character = static_cast<unsigned char>(rawCharacter);
             if (!detail::relayAsciiAlphaNumeric(character) &&
                 character != '-' && character != '_') {
-                return "Relay room may contain only letters, digits, '-' and '_'.";
+                return "中继房间名只能包含字母、数字、'-' 和 '_'。";
             }
         }
         if (config.token.size() < 24 || config.token.size() > 512) {
-            return "Relay producer token must contain 24 to 512 characters.";
+            return "中继生产者令牌长度必须在 24 到 512 个字符之间。";
         }
         for (const char rawCharacter : config.token) {
             const auto character = static_cast<unsigned char>(rawCharacter);
             if (character < 0x21U || character > 0x7eU) {
-                return "Relay producer token must contain visible ASCII characters only.";
+                return "中继生产者令牌只能包含可见 ASCII 字符。";
             }
         }
         const auto validTimeout = [](const std::uint32_t value) {
@@ -292,15 +292,15 @@ namespace web_radar
             !validTimeout(config.connectTimeoutMilliseconds) ||
             !validTimeout(config.sendTimeoutMilliseconds) ||
             !validTimeout(config.receiveTimeoutMilliseconds)) {
-            return "Relay network timeouts must be between 100 and 30000 ms.";
+            return "中继网络超时必须介于 100 到 30000 毫秒之间。";
         }
         if (config.maxSnapshotBytes < 4096U ||
             config.maxSnapshotBytes > 4U * 1024U * 1024U) {
-            return "Relay snapshot limit must be between 4096 and 4194304 bytes.";
+            return "中继快照上限必须介于 4096 到 4194304 字节之间。";
         }
         if (config.maximumQueuedSnapshotAgeMilliseconds < 250U ||
             config.maximumQueuedSnapshotAgeMilliseconds > 30000U) {
-            return "Relay queued snapshot age must be between 250 and 30000 ms.";
+            return "中继排队快照的存活时间必须介于 250 到 30000 毫秒之间。";
         }
         return {};
     }

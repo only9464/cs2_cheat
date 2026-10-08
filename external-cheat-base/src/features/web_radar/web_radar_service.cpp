@@ -203,8 +203,8 @@ namespace web_radar
 
             if (!acquireCivetLibrary()) {
                 fail(
-                    "CivetWeb was built without static-file or WebSocket "
-                    "support (USE_WEBSOCKET is required)");
+                    "CivetWeb 构建时未启用静态文件或 WebSocket 支持"
+                    "（需要 USE_WEBSOCKET）");
                 return false;
             }
             libraryAcquired_ = true;
@@ -217,7 +217,7 @@ namespace web_radar
                         filesystemError);
                 if (filesystemError) {
                     throw std::runtime_error(
-                        "Could not resolve Web Radar document root: "
+                        "无法解析 Web 雷达的文档根目录："
                         + filesystemError.message());
                 }
 
@@ -287,7 +287,7 @@ namespace web_radar
             } catch (...) {
                 acceptingViewers_.store(false, std::memory_order_release);
                 cleanupFailedStart();
-                fail("Unknown error while starting CivetWeb");
+                fail("启动 CivetWeb 时发生未知错误");
                 return false;
             }
         }
@@ -868,7 +868,7 @@ namespace web_radar
         const WebRadarConfig& config)
     {
         if (config.bindAddress.empty() || config.bindAddress.size() > 255) {
-            return "Bind address must contain between 1 and 255 characters";
+            return "绑定地址长度必须在 1 到 255 个字符之间";
         }
         if (std::any_of(
                 config.bindAddress.begin(),
@@ -876,51 +876,49 @@ namespace web_radar
                 [](const unsigned char value) {
                     return value <= 0x20 || value == ',' || value == '/';
                 })) {
-            return "Bind address contains an unsupported character";
+            return "绑定地址含有不支持的字符";
         }
         if ((config.bindAddress.front() == '[')
             != (config.bindAddress.back() == ']')) {
             return "IPv6 bind addresses must use either no brackets or a "
-                   "matching bracket pair";
+                   "缺少配对的方括号";
         }
         if (config.port == 0) {
-            return "Port must be between 1 and 65535";
+            return "端口必须介于 1 到 65535 之间";
         }
         if (config.documentRoot.empty()) {
-            return "Web Radar document root must not be empty";
+            return "Web 雷达的文档根目录不能为空";
         }
         std::error_code filesystemError;
         if (!std::filesystem::is_directory(
                 std::filesystem::path(config.documentRoot),
                 filesystemError)) {
             return filesystemError
-                ? "Could not inspect Web Radar document root: "
+                ? "无法检查 Web 雷达的文档根目录："
                     + filesystemError.message()
-                : "Web Radar document root is not a directory";
+                : "Web 雷达的文档根目录不是一个目录";
         }
         if (config.token.size() < 16 || config.token.size() > 128) {
-            return "Web Radar token must contain between 16 and 128 "
-                   "characters";
+            return "Web 雷达令牌长度必须在 16 到 128 个字符之间";
         }
         if (!isUrlSafeToken(config.token)) {
-            return "Web Radar token must contain only URL-safe letters, "
-                   "digits, '_' or '-'";
+            return "Web 雷达令牌只能包含 URL 安全的字母、数字、'_' 或 '-'";
         }
         if (config.maxViewers == 0 || config.maxViewers > 64) {
-            return "Maximum viewer count must be between 1 and 64";
+            return "最大观看人数必须介于 1 到 64 之间";
         }
         if (config.workerThreads < config.maxViewers + 4
             || config.workerThreads > 128) {
-            return "CivetWeb worker thread count must be at least maximum "
+            return "CivetWeb 工作线程数至少要等于最大观看人数 "
                    "viewers + 4, and no greater than 128";
         }
         if (config.requestTimeoutMilliseconds < 250
             || config.requestTimeoutMilliseconds > 30000) {
-            return "Request timeout must be between 250 and 30000 ms";
+            return "请求超时必须介于 250 到 30000 毫秒之间";
         }
         if (config.websocketTimeoutMilliseconds < 1000
             || config.websocketTimeoutMilliseconds > 300000) {
-            return "WebSocket timeout must be between 1000 and 300000 ms";
+            return "WebSocket 超时必须介于 1000 到 300000 毫秒之间";
         }
         return {};
     }

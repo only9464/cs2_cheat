@@ -8,6 +8,10 @@
 #include "features/local_radar/local_fixed_radar.hpp"
 #include "core/game/web_radar_json.hpp"
 #include "core/diagnostics.hpp"
+// Pulls in the run-time offset registry filled from the cs2-dumper JSON payload.
+// The generated headers (offsets.hpp / buttons.hpp / client_dll.hpp) only need
+// "offsets_runtime.hpp"; this is the header that actually performs the fetch.
+#include "offsets_fetch.hpp"
 #include "core/performance_metrics.hpp"
 #include "core/runtime_timing.hpp"
 #include <algorithm>
@@ -65,7 +69,7 @@ void renderWaitingScreen(int dotCount)
         ImGuiCond_Always
     );
 
-    ImGui::Begin("Aegis // Connection", nullptr,
+    ImGui::Begin("Aegis // 连接", nullptr,
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
     {
         const ImVec2 position = ImGui::GetWindowPos();
@@ -86,17 +90,17 @@ void renderWaitingScreen(int dotCount)
     ImGui::SameLine();
     ImGui::TextColored(
         ImVec4(0.500f, 0.570f, 0.670f, 1.0f),
-        "CS2 OVERLAY");
+        "CS2 覆盖层");
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0.0f, 12.0f * dpiScale));
     ImGui::TextColored(
         ImVec4(0.930f, 0.960f, 1.000f, 1.0f),
-        "Waiting for Counter-Strike 2%s",
+        "正在等待 Counter-Strike 2%s",
         dots);
     ImGui::TextColored(
         ImVec4(0.500f, 0.570f, 0.670f, 1.0f),
-        "The client and its active monitor will be detected automatically.");
+        "客户端及其所在显示器会被自动检测。");
 
     ImGui::Dummy(ImVec2(0.0f, 14.0f * dpiScale));
     ImGui::PushStyleColor(
@@ -111,17 +115,17 @@ void renderWaitingScreen(int dotCount)
         true);
     ImGui::TextColored(
         ImVec4(0.930f, 0.650f, 0.260f, 1.0f),
-        "DISPLAY MODE");
+        "显示模式");
     ImGui::TextWrapped(
-        "Use Fullscreen Windowed in CS2. The overlay will then map "
-        "the game viewport to the correct monitor and aspect ratio.");
+        "请在 CS2 中使用全屏窗口化。覆盖层会把游戏视口映射到正确的"
+        "显示器和宽高比。");
     ImGui::EndChild();
     ImGui::PopStyleColor(2);
 
     ImGui::Dummy(ImVec2(0.0f, 8.0f * dpiScale));
     ImGui::TextColored(
         ImVec4(0.500f, 0.570f, 0.670f, 1.0f),
-        "Checking every 3 seconds  |  Press F9 to exit");
+        "每 3 秒重试一次  |  按 F9 退出");
 
     ImGui::End();
 }
@@ -178,6 +182,32 @@ namespace
             MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
     }
 
+    // The generated headers resolve their offsets at run time from the
+    // cs2-dumper payload, so this has to succeed before any feature reads a
+    // single offset. There is deliberately no "carry on with the old literal"
+    // path: a stale offset reads the wrong memory.
+    bool loadRuntimeOffsets()
+    {
+        const cs2_dumper::fetch::Result result = cs2_dumper::fetch::initialize();
+        if (result.ok) {
+            diagnostics::log(
+                (L"cs2-dumper 偏移已加载：" +
+                    std::to_wstring(result.symbolCount) + L" 个符号，" +
+                    std::to_wstring(result.classCount) + L" 个类")
+                    .c_str());
+            return true;
+        }
+
+        std::wstring message =
+            L"无法加载读取游戏所需的 cs2-dumper 偏移数据，程序未启动。\n\n";
+        message += std::wstring(result.error.begin(), result.error.end());
+        message += L"\n\n离线环境？请把 CS2_OFFSETS_DIR 指向存放 offsets.json、"
+                   L"buttons.json 和 client_dll.json 的文件夹"
+                   L"（即 a2x/cs2-dumper 的 output/ 目录）。";
+        showFatalError(message.c_str());
+        return false;
+    }
+
     std::string makeViewerToken()
     {
         static constexpr char alphabet[] =
@@ -194,7 +224,7 @@ namespace
             BCRYPT_USE_SYSTEM_PREFERRED_RNG);
         if (result != 0) {
             throw std::runtime_error(
-                "Windows could not generate a Web Radar access token");
+                "Windows 无法生成 Web 雷达访问令牌");
         }
 
         std::string token(32, 'A');
@@ -666,8 +696,8 @@ namespace
                 retirement_.reset();
                 retirementFailed_ = true;
                 lastError_ =
-                    "Unable to retire the previous Relay connection safely. "
-                    "Restart the program before enabling Public Relay again.";
+                    "无法安全地结束上一个中继连接。"
+                    "请重启程序后再启用公网中继。";
             }
         }
 
@@ -771,13 +801,13 @@ int main(int argc, char* argv[])
     const DWORD mutexError = GetLastError();
     if (!instanceMutex.get()) {
         showFatalError(
-            L"Unable to create the single-instance guard.");
+            L"无法创建单实例守护对象。");
         return -1;
     }
     if (mutexError == ERROR_ALREADY_EXISTS) {
         MessageBoxW(
             nullptr,
-            L"CS2 ESP is already running.",
+            L"CS2 ESP 已经在运行。",
             L"CS2 ESP",
             MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
         return 0;
@@ -789,6 +819,11 @@ int main(int argc, char* argv[])
             argv,
             "--allow-memory-writes"));
     menu::loadPersistentSettings();
+
+    if (!loadRuntimeOffsets()) {
+        memory::Close();
+        return -1;
+    }
 
 #ifndef SHOW_CONSOLE
     FreeConsole();
@@ -806,13 +841,13 @@ int main(int argc, char* argv[])
         sdl_renderer::menuVisible = true;
         if (!sdl_renderer::initWaiting()) {
             showFatalError(
-                L"Unable to initialize the overlay. Windows 10/11 with "
-                L"per-monitor DPI awareness and a working SDL2.dll are required.");
+                L"无法初始化覆盖层。需要 Windows 10/11、"
+                L"按显示器区分的 DPI 感知，以及可用的 SDL2.dll。");
             memory::Close();
             return -1;
         }
         if (!sdl_renderer::initImGui()) {
-            showFatalError(L"Unable to initialize ImGui.");
+            showFatalError(L"无法初始化 ImGui。");
             local_fixed_radar::reset();
             sdl_renderer::destroy();
             memory::Close();
@@ -860,7 +895,7 @@ int main(int argc, char* argv[])
             !sdl_renderer::initImGui() ||
             !aimbot::init()) {
             diagnostics::log(
-                L"Game attach failed or raced with shutdown; retrying.");
+                L"游戏附加失败，或与关闭过程发生竞争；正在重试。");
             sdl_renderer::shutdownImGui();
             local_fixed_radar::reset();
             sdl_renderer::destroy();
@@ -1152,7 +1187,7 @@ int main(int argc, char* argv[])
 
         if (sdl_renderer::running) {
             diagnostics::log(
-                L"CS2 disconnected; returning to the waiting screen.");
+                L"CS2 已断开连接，返回等待界面。");
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(500));
         }
